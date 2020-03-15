@@ -29,6 +29,37 @@ RTC_GPIO16 (GPIO14) T6  PWM ON BOOT         N/A
 RTC_GPIO17 (GPIO27) T7  OK / OK             SHIFTREG-LATCH [ST_CP of 74HC595]
 */
 
+/*
+LCD MAP:
+ - DIGIT 0: [ 1, 17, 18, 19, 20,  2,  3]
+ - DIGIT 1: [ 5,  4, 22, 23, 24,  6,  7]
+ - DIGIT 2: [10,  9, 26, 27, 28, 11, 12]
+ - DIGIT 3: [14, 13, 29, 30, 31, 15, 16]
+ - TWO DOTS: 8
+ - OTHER DOTS: 21, 25, 32
+
+CODE GEN:
+digits = [];
+v = "v";
+
+[0x3F, 0x06, 0x5B, 0x4F, 0x66,
+ 0x6D, 0x7D, 0x07, 0x7F, 0x67].forEach((num,i) => {
+  A = 0;
+  B = 0;
+  ii = 0;
+  while (num) {
+    if (num & 1) {
+      bit = digits[ii] - 1;
+      if (bit >= 16) B |= 1 << (bit - 16);
+      else A |= 1 << bit;
+    }
+    ii++;
+    num >>= 1;
+  }
+  console.log(`else if(${v} == ${i}) { LCDA |= ${A}; LCDB |= ${B}; }`);
+});
+*/
+
 gpio_num_t ulp_gpio_data  = GPIO_NUM_2;
 gpio_num_t ulp_gpio_clock = GPIO_NUM_13;
 gpio_num_t ulp_gpio_latch = GPIO_NUM_27;
