@@ -5,3 +5,5 @@
 */
 extern uint32_t ulp_entry;
 extern uint32_t ulp_count;
+extern uint32_t ulp_LCDA;
+extern uint32_t ulp_LCDB;

@@ -19,7 +19,7 @@ RTC_GPIO6  (GPIO25) D1  OK / OK             N/A
 RTC_GPIO7  (GPIO26) D2  OK / OK             N/A
 RTC_GPIO8  (GPIO33) T8  OK / OK             N/A
 RTC_GPIO9  (GPIO32) T9  OK / OK             N/A
-RTC_GPIO10 (GPIO4)  T0  OK / OK             N/A
+RTC_GPIO10 (GPIO4)  T0  OK / OK             LCD-COMMON
 RTC_GPIO11 (GPIO0)  T1  PWM ON BOOT         N/A
 RTC_GPIO12 (GPIO2)  T2  OK / OK             SHIFTREG-DATA [DS of 74HC595]
 RTC_GPIO13 (GPIO15) T3  PWM ON BOOT         N/A
@@ -32,6 +32,7 @@ RTC_GPIO17 (GPIO27) T7  OK / OK             SHIFTREG-LATCH [ST_CP of 74HC595]
 gpio_num_t ulp_gpio_data  = GPIO_NUM_2;
 gpio_num_t ulp_gpio_clock = GPIO_NUM_13;
 gpio_num_t ulp_gpio_latch = GPIO_NUM_27;
+gpio_num_t ulp_gpio_lcd_com = GPIO_NUM_4;
 
 extern const uint8_t ulp_main_bin_start[] asm("_binary_ulp_main_bin_start");
 extern const uint8_t ulp_main_bin_end[]   asm("_binary_ulp_main_bin_end");
@@ -78,14 +79,21 @@ void setup() {
     rtc_init_out(ulp_gpio_data);
     rtc_init_out(ulp_gpio_clock);
     rtc_init_out(ulp_gpio_latch);
+    rtc_init_out(ulp_gpio_lcd_com);
 
-    init_run_ulp(500 * 1000); // 500 msec
+    init_run_ulp(125 * 1000); // 125 msec (8 Hz)
   }
 }
 
 void loop() {
   Serial.printf("ulp count: %u [%u]\n", ulp_count & 0xFFFF, millis());
 
-  ESP_ERROR_CHECK( esp_sleep_enable_ulp_wakeup() );
-  esp_deep_sleep_start();
+  uint32_t v = 1 << ((ulp_count >> 2) & 0x1F);
+  ulp_LCDA = v & 0xFFFF;
+  ulp_LCDB = v >> 16;
+
+  while (1) {
+    ESP_ERROR_CHECK( esp_sleep_enable_ulp_wakeup() );
+    esp_deep_sleep_start();
+  }
 }
