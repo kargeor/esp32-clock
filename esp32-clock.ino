@@ -119,11 +119,6 @@ void setup() {
 }
 
 void loop() {
-  ////////Serial.printf("ulp count: %u [%u]\n", ulp_count & 0xFFFF, millis());
-  //////ulp_t0 = ((ulp_count>>2) & 0xFFFF) % 10;
-
-  while (1) {
-    ESP_ERROR_CHECK( esp_sleep_enable_ulp_wakeup() );
-    esp_deep_sleep_start();
-  }
+  ESP_ERROR_CHECK( esp_sleep_enable_ulp_wakeup() );
+  esp_deep_sleep_start();
 }
