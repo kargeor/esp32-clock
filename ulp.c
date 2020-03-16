@@ -52,32 +52,82 @@
 #define short_delay() wait( 800 )
 
 // Shared with main
-unsigned count = 0;
-unsigned LCDA = 0;
-unsigned LCDB = 0;
+unsigned t3 = 0; // hours X10
+unsigned t2 = 0; // hours  X1
+unsigned t1 = 0; // mins  X10
+unsigned t0 = 0; // mins   X1
+unsigned counter = 0; // seconds X8
 
 // helpers
-unsigned dA = 0;
-unsigned dB = 0;
-unsigned i = 0;
-unsigned d = 0;
+unsigned lcdA = 0; // LCD Content A
+unsigned lcdB = 0; // LCD Content B
+unsigned dA = 0;   // LCD Content with polarity
+unsigned dB = 0;   // LCD Content with polarity
+unsigned i = 0;    // temp counter
+unsigned d = 0;    // temp
+
+unsigned DIGIT0A[10] = { 3, 0, 5, 5, 6, 7, 7, 1, 7, 7 };
+unsigned DIGIT0B[10] = { 15, 3, 13, 7, 3, 6, 14, 3, 15, 7 };
+unsigned DIGIT1A[10] = { 56, 8, 88, 88, 104, 112, 112, 24, 120, 120 };
+unsigned DIGIT1B[10] = { 224, 32, 192, 96, 32, 96, 224, 32, 224, 96 };
+unsigned DIGIT2A[10] = { 1792, 256, 2816, 2816, 3328, 3584, 3584, 768, 3840, 3840 };
+unsigned DIGIT2B[10] = { 3584, 512, 3072, 1536, 512, 1536, 3584, 512, 3584, 1536 };
+unsigned DIGIT3A[10] = { 28672, 4096, 45056, 45056, 53248, 57344, 57344, 12288, 61440, 61440 };
+unsigned DIGIT3B[10] = { 28672, 4096, 24576, 12288, 4096, 12288, 28672, 4096, 28672, 12288 };
 
 void entry() {
+  // CALC TIME
+  counter++;
+  if (counter >= 480) {
+    counter = 0;
+    t0++;
+  }
+  if (t0 >= 10) {
+    t0 = 0;
+    t1++;
+  }
+  if (t1 >= 6) {
+    t1 = 0;
+    t2++;
+  }
+  if (t2 >= 10) {
+    t2 = 0;
+    t3++;
+  }
+  if (t3 >= 1 && t2 >= 2) {
+    t3 = 0;
+    t2 = 0;
+  }
+  
+  // UPDATE LCD
+  lcdA = DIGIT0A[t0] | DIGIT1A[t1] | DIGIT2A[t2];
+  lcdB = DIGIT0B[t0] | DIGIT1B[t1] | DIGIT2B[t2];
+
+  if (t3) {
+    lcdA |= DIGIT3A[t3];
+    lcdB |= DIGIT3B[t3];
+  }
+
+  if (counter & 4) {
+    lcdA |= 1<<7;
+  }
+
+  // UPDATE IO
   gpio_data_unlock();
   gpio_clock_unlock();
   gpio_latch_unlock();
   gpio_lcd_com_unlock();
 
   short_delay();
-  if (count & 1) {
-    gpio_lcd_com_low();
-    dA = LCDA;
-    dB = LCDB;
+  
+  if (counter & 1) {
+    dA = lcdA;
+    dB = lcdB;
   } else {
-    gpio_lcd_com_high();
-    dA = ~LCDA;
-    dB = ~LCDB;
+    dA = ~lcdA;
+    dB = ~lcdB;
   }
+  
   gpio_latch_low();
   short_delay();
 
@@ -109,15 +159,18 @@ void entry() {
   short_delay();
   gpio_latch_high();
 
+  if (counter & 1) {
+    gpio_lcd_com_low();
+  } else {
+    gpio_lcd_com_high();
+  }
+
   gpio_data_lock();
   gpio_clock_lock();
   gpio_latch_lock();
   gpio_lcd_com_lock();
 
-  count++;
-  if ((count & 3) == 0) {
-    wake_when_ready();
-  }
+  // wake_when_ready();
 }
 
 #endif // do not add anything after here

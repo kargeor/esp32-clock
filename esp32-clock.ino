@@ -40,10 +40,11 @@ LCD MAP:
 
 CODE GEN:
 digits = [];
-v = "v";
 
+rA = [];
+rB = [];
 [0x3F, 0x06, 0x5B, 0x4F, 0x66,
- 0x6D, 0x7D, 0x07, 0x7F, 0x67].forEach((num,i) => {
+ 0x6D, 0x7D, 0x07, 0x7F, 0x6F].forEach((num,i) => {
   A = 0;
   B = 0;
   ii = 0;
@@ -56,8 +57,10 @@ v = "v";
     ii++;
     num >>= 1;
   }
-  console.log(`else if(${v} == ${i}) { LCDA |= ${A}; LCDB |= ${B}; }`);
+  rA.push(A);
+  rB.push(B);
 });
+console.log(rA, rB);
 */
 
 gpio_num_t ulp_gpio_data  = GPIO_NUM_2;
@@ -70,7 +73,6 @@ extern const uint8_t ulp_main_bin_end[]   asm("_binary_ulp_main_bin_end");
 
 static void init_run_ulp(uint32_t usec) {
   // initialize ulp variable
-  ulp_count = 0;
   ulp_set_wakeup_period(0, usec);
 
   // use this binary loader instead
@@ -117,11 +119,8 @@ void setup() {
 }
 
 void loop() {
-  Serial.printf("ulp count: %u [%u]\n", ulp_count & 0xFFFF, millis());
-
-  uint32_t v = 1 << ((ulp_count >> 2) & 0x1F);
-  ulp_LCDA = v & 0xFFFF;
-  ulp_LCDB = v >> 16;
+  ////////Serial.printf("ulp count: %u [%u]\n", ulp_count & 0xFFFF, millis());
+  //////ulp_t0 = ((ulp_count>>2) & 0xFFFF) % 10;
 
   while (1) {
     ESP_ERROR_CHECK( esp_sleep_enable_ulp_wakeup() );

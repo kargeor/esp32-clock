@@ -4,6 +4,9 @@
     of the variable name and must be size 'uint32_t'
 */
 extern uint32_t ulp_entry;
-extern uint32_t ulp_count;
-extern uint32_t ulp_LCDA;
-extern uint32_t ulp_LCDB;
+
+extern uint32_t ulp_counter;
+extern uint32_t ulp_t0;
+extern uint32_t ulp_t1;
+extern uint32_t ulp_t2;
+extern uint32_t ulp_t3;
