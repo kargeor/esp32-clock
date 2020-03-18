@@ -170,18 +170,33 @@ void get_ntp_time(void) {
 }
 
 void print_clock_info(void) {
+  // We only care about SLOW RTC Clock
   Serial.print("rtc_clk_slow_freq_get_hz() = ");
   Serial.println(rtc_clk_slow_freq_get_hz());
-  Serial.print("rtc_clk_fast_freq_get() = ");
-  Serial.println(rtc_clk_fast_freq_get());
-  Serial.print("rtc_clk_xtal_freq_get() = ");
-  Serial.println(rtc_clk_xtal_freq_get());
-  
-  // calibrate 8M/256 clock against XTAL, get 8M/256 clock period
-  uint32_t rtc_8md256_period = rtc_clk_cal(RTC_CAL_8MD256, 100);
-  uint32_t rtc_fast_freq_hz = 1000000ULL * (1 << RTC_CLK_CAL_FRACT) * 256 / rtc_8md256_period;
-  Serial.print("rtc_fast_freq_hz = ");
-  Serial.println(rtc_fast_freq_hz);
+  Serial.print("rtc_clk_slow_freq_get() = ");
+  Serial.println(rtc_clk_slow_freq_get());
+}
+
+#define SLOW_CLK_CAL_CYCLES 1024
+
+// Based on
+// https://github.com/espressif/esp-idf/blob/51b4e97e4255da824ccb45a65b25d97b689ce0cb/components/esp32/clk.c
+void select_rtc_slow_clk(void)
+{
+  uint32_t cal_val = 0;
+  do {
+    Serial.println("waiting for 32k oscillator to start up");
+    
+    rtc_clk_32k_enable(true);
+    delay(100); // wait for stable
+
+    cal_val = rtc_clk_cal(RTC_CAL_32K_XTAL, SLOW_CLK_CAL_CYCLES);
+    Serial.println("Calibration value:");
+    Serial.println(cal_val);
+  } while (cal_val == 0);
+
+  rtc_clk_slow_freq_set(RTC_SLOW_FREQ_32K_XTAL);
+  // cal_val = rtc_clk_cal(RTC_CAL_RTC_MUX, SLOW_CLK_CAL_CYCLES);
 }
 
 void setup() {
@@ -200,10 +215,8 @@ void setup() {
     Serial.print((&ulp_entry - RTC_SLOW_MEM), HEX);
     Serial.println();
 
-    rtc_clk_fast_freq_set(RTC_FAST_FREQ_XTALD4);
-    delay(2000);
+    select_rtc_slow_clk();
     print_clock_info();
-    delay(2000);
 
     rtc_init_out(ulp_gpio_data);
     rtc_init_out(ulp_gpio_clock);
@@ -211,9 +224,6 @@ void setup() {
     rtc_init_out(ulp_gpio_lcd_com);
 
     init_run_ulp(125 * 1000); // 125 msec (8 Hz)
-
-    delay(5000);
-    print_clock_info();
   }
 
   get_ntp_time();
