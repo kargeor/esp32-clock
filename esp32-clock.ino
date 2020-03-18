@@ -8,6 +8,12 @@
 #include "soc/soc.h"
 #include "driver/rtc_io.h"
 
+#include <WiFi.h>
+#include <SPIFFS.h>
+
+const long  gmtOffset_sec = -3600 * 8; // Pacific Time Zone (UTC−08:00)
+const int   daylightOffset_sec = 3600;
+
 /* GPIO:
  RTC        GPIO  FUNC  IN / OUT            USE
 ------------------------------------------------
@@ -93,6 +99,75 @@ void rtc_init_out(gpio_num_t gpionum) {
   // rtc_gpio_hold_en(ulp_toggle_num);
 }
 
+uint8_t ssid[64];
+uint8_t password[64];
+uint8_t ntpServer[64];
+
+void fixLineChange(uint8_t* s) {
+  while (*s) {
+    if (*s == '\r') *s = '\0';
+    if (*s == '\n') *s = '\0';
+    s++;
+  }
+}
+
+void get_ntp_time(void) {
+  if (!SPIFFS.begin(true)) return;
+
+  bzero(ssid, 64);
+  bzero(password, 64);
+  bzero(ntpServer, 64);
+
+  File file = SPIFFS.open("/wifi-ssid.txt");
+  if (!file) return;
+  file.read(ssid, 64);
+  file.close();
+
+  file = SPIFFS.open("/wifi-password.txt");
+  if (!file) return;
+  file.read(password, 64);
+  file.close();
+
+  file = SPIFFS.open("/ntp-server.txt");
+  if (!file) return;
+  file.read(ntpServer, 64);
+  file.close();
+
+  fixLineChange(ssid);
+  fixLineChange(password);
+  fixLineChange(ntpServer);
+
+  Serial.printf("Connecting to %s.", ssid);
+  WiFi.begin((char*)ssid, (char*)password);
+  while (WiFi.status() != WL_CONNECTED) {
+      delay(250);
+      Serial.print(".");
+  }
+  Serial.println("CONNECTED");
+
+  configTime(gmtOffset_sec, daylightOffset_sec, (char*)ntpServer);
+  struct tm timeinfo;
+  if(!getLocalTime(&timeinfo)){
+    Serial.println("Failed to obtain time");
+    return;
+  }
+
+  ulp_t0 = timeinfo.tm_min % 10;
+  ulp_t1 = timeinfo.tm_min / 10;
+  
+  int h = timeinfo.tm_hour % 12;
+  ulp_t2 = h % 10;
+  ulp_t3 = h / 10;
+
+  ulp_counter = timeinfo.tm_sec * 8;
+
+  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+
+  // disconnect WiFi as it's no longer needed
+  WiFi.disconnect(true);
+  WiFi.mode(WIFI_OFF);
+}
+
 void setup() {
   Serial.begin(115200);
   Serial.println();
@@ -116,6 +191,8 @@ void setup() {
 
     init_run_ulp(125 * 1000); // 125 msec (8 Hz)
   }
+
+  get_ntp_time();
 }
 
 void loop() {
