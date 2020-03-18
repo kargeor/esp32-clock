@@ -6,6 +6,7 @@
 #include "soc/rtc_io_reg.h"
 #include "soc/sens_reg.h"
 #include "soc/soc.h"
+#include "soc/rtc.h"
 #include "driver/rtc_io.h"
 
 #include <WiFi.h>
@@ -168,6 +169,21 @@ void get_ntp_time(void) {
   WiFi.mode(WIFI_OFF);
 }
 
+void print_clock_info(void) {
+  Serial.print("rtc_clk_slow_freq_get_hz() = ");
+  Serial.println(rtc_clk_slow_freq_get_hz());
+  Serial.print("rtc_clk_fast_freq_get() = ");
+  Serial.println(rtc_clk_fast_freq_get());
+  Serial.print("rtc_clk_xtal_freq_get() = ");
+  Serial.println(rtc_clk_xtal_freq_get());
+  
+  // calibrate 8M/256 clock against XTAL, get 8M/256 clock period
+  uint32_t rtc_8md256_period = rtc_clk_cal(RTC_CAL_8MD256, 100);
+  uint32_t rtc_fast_freq_hz = 1000000ULL * (1 << RTC_CLK_CAL_FRACT) * 256 / rtc_8md256_period;
+  Serial.print("rtc_fast_freq_hz = ");
+  Serial.println(rtc_fast_freq_hz);
+}
+
 void setup() {
   Serial.begin(115200);
   Serial.println();
@@ -184,12 +200,20 @@ void setup() {
     Serial.print((&ulp_entry - RTC_SLOW_MEM), HEX);
     Serial.println();
 
+    rtc_clk_fast_freq_set(RTC_FAST_FREQ_XTALD4);
+    delay(2000);
+    print_clock_info();
+    delay(2000);
+
     rtc_init_out(ulp_gpio_data);
     rtc_init_out(ulp_gpio_clock);
     rtc_init_out(ulp_gpio_latch);
     rtc_init_out(ulp_gpio_lcd_com);
 
     init_run_ulp(125 * 1000); // 125 msec (8 Hz)
+
+    delay(5000);
+    print_clock_info();
   }
 
   get_ntp_time();
