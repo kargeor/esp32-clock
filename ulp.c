@@ -48,8 +48,11 @@
   WRITE_RTC_REG(RTC_IO_TOUCH_PAD0_REG,RTC_IO_TOUCH_PAD0_HOLD_S, 1, 1)
 //
 
-// this should be around 0.1 ms
-#define short_delay() wait( 800 )
+// cycles on a 8 MHz clock
+// 800 => ~100uS
+// 80 => ~10uS
+// 40 => ~5uS
+#define short_delay() wait( 40 )
 
 // Shared with main
 unsigned t3 = 0; // hours X10

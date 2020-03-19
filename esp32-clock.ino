@@ -78,9 +78,15 @@ gpio_num_t ulp_gpio_lcd_com = GPIO_NUM_4;
 extern const uint8_t ulp_main_bin_start[] asm("_binary_ulp_main_bin_start");
 extern const uint8_t ulp_main_bin_end[]   asm("_binary_ulp_main_bin_end");
 
-static void init_run_ulp(uint32_t usec) {
+static void ulp_set_wakeup_cycles(uint32_t period_cycles) {
+  size_t period_index = 0;
+  REG_SET_FIELD(SENS_ULP_CP_SLEEP_CYC0_REG + period_index * sizeof(uint32_t),
+    SENS_SLEEP_CYCLES_S0, (uint32_t) period_cycles);
+}
+
+static void init_run_ulp(void) {
   // initialize ulp variable
-  ulp_set_wakeup_period(0, usec);
+  // ulp_set_wakeup_period(0, usec);
 
   // use this binary loader instead
   ESP_ERROR_CHECK(ulptool_load_binary(
@@ -223,7 +229,10 @@ void setup() {
     rtc_init_out(ulp_gpio_latch);
     rtc_init_out(ulp_gpio_lcd_com);
 
-    init_run_ulp(125 * 1000); // 125 msec (8 Hz)
+    // on a 32768 clock, ULP running not counted!
+    // manually calibrated for ~62.5ms
+    ulp_set_wakeup_cycles(2000);
+    init_run_ulp();
   }
 
   get_ntp_time();
