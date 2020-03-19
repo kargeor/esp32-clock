@@ -5,7 +5,7 @@
 */
 extern uint32_t ulp_entry;
 
-extern uint32_t ulp_counter;
+extern uint32_t ulp_seconds;
 extern uint32_t ulp_t0;
 extern uint32_t ulp_t1;
 extern uint32_t ulp_t2;

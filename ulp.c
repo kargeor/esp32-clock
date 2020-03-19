@@ -59,7 +59,9 @@ unsigned t3 = 0; // hours X10
 unsigned t2 = 0; // hours  X1
 unsigned t1 = 0; // mins  X10
 unsigned t0 = 0; // mins   X1
-unsigned counter = 0; // seconds X8
+unsigned seconds = 0; // seconds
+unsigned rtc16 = 0; // 16 bits from RTC counter (seconds X2)
+unsigned previous_rtc16 = 0;
 
 // helpers
 unsigned lcdA = 0; // LCD Content A
@@ -68,6 +70,7 @@ unsigned dA = 0;   // LCD Content with polarity
 unsigned dB = 0;   // LCD Content with polarity
 unsigned i = 0;    // temp counter
 unsigned d = 0;    // temp
+unsigned lcdP = 0; // polarity of LCD
 
 unsigned DIGIT0A[10] = { 3, 0, 5, 5, 6, 7, 7, 1, 7, 7 };
 unsigned DIGIT0B[10] = { 15, 3, 13, 7, 3, 6, 14, 3, 15, 7 };
@@ -79,10 +82,24 @@ unsigned DIGIT3A[10] = { 28672, 4096, 45056, 45056, 53248, 57344, 57344, 12288, 
 unsigned DIGIT3B[10] = { 28672, 4096, 24576, 12288, 4096, 12288, 28672, 4096, 28672, 12288 };
 
 void entry() {
+  // READ RTC REGISTER
+  // from https://github.com/espressif/esp-idf/blob/c1d0daf36d0dca81c23c226001560edfa51c30ea/components/soc/src/esp32/rtc_time.c
+  WRITE_RTC_REG(RTC_CNTL_TIME_UPDATE_REG, RTC_CNTL_TIME_UPDATE_S, 1, 1);
+  while (READ_RTC_REG(RTC_CNTL_TIME_UPDATE_REG, RTC_CNTL_TIME_VALID_S, 1) == 0) {
+    short_delay();
+  }
+  // SET_PERI_REG_MASK(RTC_CNTL_INT_CLR_REG, RTC_CNTL_TIME_VALID_INT_CLR); ?
+  rtc16 = READ_RTC_REG(RTC_CNTL_TIME0_REG, 14, 16);
+
   // CALC TIME
-  counter++;
-  if (counter >= 480) {
-    counter = 0;
+  previous_rtc16 ^= rtc16;
+  if (previous_rtc16 & 2) {
+    seconds++;
+  }
+  previous_rtc16 = rtc16;
+
+  if (seconds >= 60) {
+    seconds = 0;
     t0++;
   }
   if (t0 >= 10) {
@@ -111,7 +128,7 @@ void entry() {
     lcdB |= DIGIT3B[t3];
   }
 
-  if (counter & 4) {
+  if ((rtc16 & 1) == 0) {
     lcdA |= 1<<7;
   }
 
@@ -123,12 +140,14 @@ void entry() {
 
   short_delay();
   
-  if (counter & 1) {
+  if (lcdP) {
     dA = lcdA;
     dB = lcdB;
+    lcdP = 0;
   } else {
     dA = ~lcdA;
     dB = ~lcdB;
+    lcdP = 1;
   }
   
   gpio_latch_low();
@@ -162,10 +181,10 @@ void entry() {
   short_delay();
   gpio_latch_high();
 
-  if (counter & 1) {
-    gpio_lcd_com_low();
-  } else {
+  if (lcdP) {
     gpio_lcd_com_high();
+  } else {
+    gpio_lcd_com_low();
   }
 
   gpio_data_lock();

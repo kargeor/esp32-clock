@@ -166,7 +166,7 @@ void get_ntp_time(void) {
   ulp_t2 = h % 10;
   ulp_t3 = h / 10;
 
-  ulp_counter = timeinfo.tm_sec * 8;
+  ulp_seconds = timeinfo.tm_sec;
 
   Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
 
